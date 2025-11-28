@@ -57,18 +57,19 @@ jobs:
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$USERS_REPO:$IMAGE_TAG
 
       - name: Update CloudFormation stack with new image URIs
-        run: |
-          aws cloudformation update-stack \
-            --stack-name FinalProjectStack \
-            --use-previous-template \
-            --capabilities CAPABILITY_IAM \
-            --parameters \
-              ParameterKey=PostsImageUri,ParameterValue=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$POSTS_REPO:$IMAGE_TAG \
-              ParameterKey=ThreadsImageUri,ParameterValue=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$THREADS_REPO:$IMAGE_TAG \
-              ParameterKey=UsersImageUri,ParameterValue=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$USERS_REPO:$IMAGE_TAG \
-              ParameterKey=VpcCidr,UsePreviousValue=true \
-              ParameterKey=PublicSubnet1Cidr,UsePreviousValue=true \
-              ParameterKey=PublicSubnet2Cidr,UsePreviousValue=true
+        run: >
+          aws cloudformation update-stack
+          --stack-name FinalProjectStack
+          --use-previous-template
+          --capabilities CAPABILITY_IAM
+          --parameters
+          ParameterKey=PostsImageUri,ParameterValue=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$POSTS_REPO:$IMAGE_TAG
+          ParameterKey=ThreadsImageUri,ParameterValue=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$THREADS_REPO:$IMAGE_TAG
+          ParameterKey=UsersImageUri,ParameterValue=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$USERS_REPO:$IMAGE_TAG
+          ParameterKey=VpcCidr,UsePreviousValue=true
+          ParameterKey=PublicSubnet1Cidr,UsePreviousValue=true
+          ParameterKey=PublicSubnet2Cidr,UsePreviousValue=true
+
 
       - name: Wait for CloudFormation update to complete
         run: |

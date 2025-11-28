@@ -1,0 +1,74 @@
+name: CI-CD to ECS
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      POSTS_REPO: turner_posts
+      THREADS_REPO: turner-threads
+      USERS_REPO: turner-users
+      CLUSTER_NAME: finalproject-cluster
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tag
+        id: vars
+        run: echo "IMAGE_TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - name: Build, tag, and push posts image
+        run: |
+          cd posts
+          docker build -t $POSTS_REPO:$IMAGE_TAG .
+          docker tag $POSTS_REPO:$IMAGE_TAG $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$POSTS_REPO:$IMAGE_TAG
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$POSTS_REPO:$IMAGE_TAG
+
+      - name: Build, tag, and push threads image
+        run: |
+          cd threads
+          docker build -t $THREADS_REPO:$IMAGE_TAG .
+          docker tag $THREADS_REPO:$IMAGE_TAG $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$THREADS_REPO:$IMAGE_TAG
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$THREADS_REPO:$IMAGE_TAG
+
+      - name: Build, tag, and push users image
+        run: |
+          cd users
+          docker build -t $USERS_REPO:$IMAGE_TAG .
+          docker tag $USERS_REPO:$IMAGE_TAG $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$USERS_REPO:$IMAGE_TAG
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$USERS_REPO:$IMAGE_TAG
+
+      - name: Update CloudFormation stack with new image URIs
+        run: |
+          aws cloudformation update-stack \
+            --stack-name FinalProjectStack \
+            --use-previous-template \
+            --parameters \
+              ParameterKey=PostsImageUri,ParameterValue=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$POSTS_REPO:$IMAGE_TAG \
+              ParameterKey=ThreadsImageUri,ParameterValue=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$THREADS_REPO:$IMAGE_TAG \
+              ParameterKey=UsersImageUri,ParameterValue=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$USERS_REPO:$IMAGE_TAG \
+              ParameterKey=VpcCidr,UsePreviousValue=true \
+              ParameterKey=PublicSubnet1Cidr,UsePreviousValue=true \
+              ParameterKey=PublicSubnet2Cidr,UsePreviousValue=true
+
+      - name: Wait for CloudFormation update to complete
+        run: |
+          aws cloudformation wait stack-update-complete --stack-name FinalProjectStack

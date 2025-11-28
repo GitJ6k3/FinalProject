@@ -61,6 +61,7 @@ jobs:
           aws cloudformation update-stack \
             --stack-name FinalProjectStack \
             --use-previous-template \
+            --capabilities CAPABILITY_IAM \
             --parameters \
               ParameterKey=PostsImageUri,ParameterValue=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$POSTS_REPO:$IMAGE_TAG \
               ParameterKey=ThreadsImageUri,ParameterValue=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$THREADS_REPO:$IMAGE_TAG \
